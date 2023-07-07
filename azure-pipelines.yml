@@ -1,0 +1,72 @@
+trigger:
+  branches:
+    include:
+      - main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  serviceconnection: ""
+  backend_rg: ""
+  backend_storage_account: ""
+  backend_container_name: ""
+  backendkey_tfstate: "mytest/terraform.tfstate"
+  workingdirectory: "$(System.DefaultWorkingDirectory)"
+
+stages:
+  - stage: tfvalidate
+    jobs:
+      - job: tfvalidate
+        continueOnError: false
+        steps:
+          - task: TerraformInstaller@1
+            displayName: tfinstall
+            inputs:
+              terraformVersion: 'latest'
+          - task: TerraformTaskV4@4
+            displayName: terraform init
+            inputs:
+              provider: 'azurerm'
+              command: 'init'
+              backendServiceArm: 
+              backendAzureRmResourceGroupName: '$(backend_rg)'
+              backendAzureRmStorageAccountName: '$(backend_storage_account)'
+              backendAzureRmContainerName: '$(backend_cotainer_name)'
+              backendAzureRmKey: '$(backendkey_tfstate)'
+          - task: TerraformTaskV4@4
+            inputs:
+              provider: 'azurerm'
+              command: 'validate'
+
+  - stage: Deploy
+    jobs:
+      - job: deploy
+        continueOnError: false
+        steps:
+          - task: TerraformInstaller@1
+            inputs:
+              terraformVersion: 'latest'
+          - task: TerraformTaskV4@4
+            inputs:
+              provider: 'azurerm'
+              command: 'init'
+              backendServiceArm: 
+              backendAzureRmResourceGroupName: '$(backend_rg)'
+              backendAzureRmStorageAccountName: '$(backend_storage_account)'
+              backendAzureRmContainerName: '$(backend_cotainer_name)'
+              backendAzureRmKey: '$(backendkey_tfstate)'
+          - task: TerraformTaskV4@4
+            inputs:
+              provider: 'azurerm'
+              command: 'validate'
+          - task: TerraformTaskV4@4
+            inputs:
+              provider: 'azurerm'
+              command: 'plan'
+              environmentServiceNameAzureRM: ''
+          - task: TerraformTaskV4@4
+            inputs:
+              provider: 'azurerm'
+              command: 'apply'
+              environmentServiceNameAzureRM: ''
